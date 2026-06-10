@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "g2p"
+version = "0.1.0"
+description = "From-scratch LSTM encoder-decoder for grapheme-to-phoneme conversion"
+requires-python = ">=3.10"
+dependencies = [
+    "torch",
+    "numpy",
+    "pandas",
+]
+
+[project.optional-dependencies]
+# editdistance has no wheel for some platforms (e.g. Windows Store Python);
+# g2p.train falls back to a pure-Python Levenshtein with identical results.
+metrics = ["editdistance"]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["g2p"]
