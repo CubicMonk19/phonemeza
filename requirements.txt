@@ -3,3 +3,7 @@ numpy
 pandas
 editdistance
 pytest
+fastapi
+uvicorn
+httpx
+# rate limiting is a tiny in-process middleware in api/main.py (no extra dep)
