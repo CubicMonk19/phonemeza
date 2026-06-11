@@ -1,0 +1,5 @@
+lang,context_mode,test_per,test_word_acc,epochs_run,train_size
+zul,attn,0.0031,0.9873,16,12000
+xho,attn,0.0017,0.99,25,12000
+afr,attn,0.0284,0.8238,20,12024
+afr,none,0.0894,0.6961,27,12024
