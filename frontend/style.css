@@ -1,0 +1,198 @@
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --ink: #1c2733;
+  --muted: #5b6b7b;
+  --accent: #0b7a5c;
+  --accent-ink: #ffffff;
+  --border: #dde3ea;
+  --error: #b3261e;
+  --heat: 11, 122, 92; /* rgb of --accent, used for heatmap alpha */
+}
+
+* { box-sizing: border-box; }
+
+/* keep the hidden attribute working on elements we give display:flex */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.site-header {
+  padding: 2.2rem 1rem 1.4rem;
+  text-align: center;
+}
+.site-header h1 {
+  margin: 0;
+  font-size: 2.2rem;
+  letter-spacing: -0.02em;
+}
+.site-header .za { color: var(--accent); }
+.tagline {
+  margin: 0.4rem auto 0;
+  max-width: 34rem;
+  color: var(--muted);
+}
+
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+  box-shadow: 0 1px 3px rgba(28, 39, 51, 0.06);
+}
+
+.controls {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.field.grow { flex: 1 1 12rem; }
+.field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+select, input[type="text"] {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  min-width: 11rem;
+}
+input[type="text"]:focus, select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem 1.3rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+button:hover { filter: brightness(1.08); }
+button:disabled { opacity: 0.55; cursor: wait; }
+
+.error {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--error) 35%, white);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--error) 7%, white);
+  color: var(--error);
+}
+
+.result { margin-top: 1rem; }
+.result-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+.result-word {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+.result-arrow { color: var(--muted); }
+.phonemes {
+  display: inline-flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.phoneme {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 1.02rem;
+  background: color-mix(in srgb, var(--accent) 11%, white);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, white);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+}
+
+.audio-row {
+  margin-top: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+.play-btn { padding: 0.4rem 0.9rem; }
+.audio-note {
+  font-size: 0.82rem;
+  color: var(--muted);
+  max-width: 28rem;
+}
+
+#heatmap-block { margin-top: 1.4rem; }
+#heatmap-block h2 {
+  font-size: 1rem;
+  margin: 0 0 0.25rem;
+}
+.heatmap-explain {
+  margin: 0 0 0.8rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.heatmap-scroll { overflow-x: auto; padding-bottom: 0.3rem; }
+.heatmap-table { border-collapse: collapse; }
+.heatmap-table th {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.45rem;
+  color: var(--ink);
+}
+.heatmap-table th.row-label { text-align: right; }
+.heatmap-table td.cell {
+  width: 2rem;
+  height: 1.7rem;
+  min-width: 2rem;
+  border: 1px solid var(--border);
+}
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.site-footer a { color: var(--accent); }
+
+@media (max-width: 520px) {
+  .controls { align-items: stretch; flex-direction: column; }
+  .field label { font-size: 0.72rem; }
+  select, input[type="text"] { min-width: 0; width: 100%; }
+  button { width: 100%; }
+  .site-header h1 { font-size: 1.8rem; }
+}

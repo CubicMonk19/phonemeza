@@ -39,6 +39,9 @@ def test_languages(client):
     for row in langs.values():
         assert 0.0 <= row["test_per"] < 1.0
         assert 0.0 < row["test_word_acc"] <= 1.0
+        # speakable is probed at runtime (espeak-ng presence + voice), so we
+        # only assert the field exists and is a bool, not its value.
+        assert isinstance(row["speakable"], bool)
 
 
 @pytest.mark.parametrize("lang,word", [
@@ -83,4 +86,33 @@ def test_multi_word_input(client):
 
 def test_too_long_word(client):
     r = client.get("/api/phonemize", params={"word": "a" * 41, "lang": "zul"})
+    assert r.status_code == 400
+
+
+def test_speak_unknown_lang(client):
+    r = client.get("/api/speak", params={"word": "umuntu", "lang": "eng"})
+    assert r.status_code == 404
+
+
+def test_speak_matches_speakable_flag(client):
+    """speakable=False -> 501; speakable=True -> a real WAV."""
+    langs = client.get("/api/languages").json()
+    for row in langs:
+        r = client.get("/api/speak",
+                       params={"word": "naam", "lang": row["code"]})
+        if row["speakable"]:
+            assert r.status_code == 200
+            assert r.headers["content-type"] == "audio/wav"
+            assert r.content[:4] == b"RIFF"
+        else:
+            assert r.status_code == 501
+
+
+def test_speak_multi_word_rejected(client):
+    langs = client.get("/api/languages").json()
+    speakable = [row["code"] for row in langs if row["speakable"]]
+    if not speakable:
+        pytest.skip("no espeak-ng voice available on this machine")
+    r = client.get("/api/speak",
+                   params={"word": "two words", "lang": speakable[0]})
     assert r.status_code == 400

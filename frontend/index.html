@@ -2,13 +2,66 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>phonemeza</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PhonemeZA — South African pronunciation dictionary</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>phonemeza</h1>
-  <p>G2P API is running. Try
-    <a href="/api/phonemize?word=umuntu&amp;lang=zul">/api/phonemize?word=umuntu&amp;lang=zul</a>
-    or <a href="/api/languages">/api/languages</a>.
-  </p>
+  <header class="site-header">
+    <h1>Phoneme<span class="za">ZA</span></h1>
+    <p class="tagline">South African pronunciation dictionary, powered by a
+      from-scratch attention seq2seq model</p>
+  </header>
+
+  <main>
+    <section class="card controls">
+      <div class="field">
+        <label for="lang">Language</label>
+        <select id="lang" aria-label="Language"></select>
+      </div>
+      <div class="field grow">
+        <label for="word">Word</label>
+        <input id="word" type="text" autocomplete="off" spellcheck="false"
+               placeholder="e.g. umuntu" maxlength="40"
+               aria-label="Word to phonemize">
+      </div>
+      <button id="go" type="button">Phonemize</button>
+    </section>
+
+    <p id="error" class="error" hidden></p>
+
+    <section id="result" class="card result" hidden>
+      <div class="result-head">
+        <span id="result-word" class="result-word"></span>
+        <span class="result-arrow" aria-hidden="true">&rarr;</span>
+        <span id="phonemes" class="phonemes" aria-label="Predicted phonemes"></span>
+      </div>
+
+      <div id="audio-row" class="audio-row" hidden>
+        <button id="play" type="button" class="play-btn"
+                aria-label="Play reference pronunciation">&#9658; Play</button>
+        <span class="audio-note">reference pronunciation, espeak-ng —
+          synthesized from the spelling by espeak's own rules, <em>not</em>
+          from the model's phonemes</span>
+      </div>
+
+      <div id="heatmap-block" hidden>
+        <h2>Attention heatmap</h2>
+        <p class="heatmap-explain">Each cell shows how strongly the model
+          attended to an input letter (column) while producing an output
+          phoneme (row) — darker means more attention.</p>
+        <div id="heatmap" class="heatmap-scroll"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Pronunciation data: NCHLT-inlang Pronunciation Dictionaries
+      (North-West University, via SADiLaR, CC BY 3.0).
+      Code: <a href="https://github.com/CubicMonk19/phonemeza"
+        target="_blank" rel="noopener">github.com/CubicMonk19/phonemeza</a></p>
+  </footer>
+
+  <script src="app.js"></script>
 </body>
 </html>

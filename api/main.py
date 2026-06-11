@@ -5,13 +5,16 @@ Run locally:
 """
 
 import logging
+import shutil
+import subprocess
+import tempfile
 import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from g2p.infer import G2PPredictor
@@ -23,13 +26,43 @@ MODELS_DIR = ROOT / "models"
 FRONTEND_DIR = ROOT / "frontend"
 
 LANG_NAMES = {"zul": "isiZulu", "xho": "isiXhosa", "afr": "Afrikaans"}
+# espeak-ng voice codes for our language codes. espeak-ng synthesizes from
+# SPELLING with its own rules — it is an independent reference pronunciation,
+# never a rendering of the model's predicted phonemes.
+ESPEAK_VOICES = {"afr": "af", "zul": "zu", "xho": "xh"}
 
 # In-process rate limit for /api/* : sliding window per client IP.
 RATE_LIMIT_MAX = 30
 RATE_LIMIT_WINDOW = 60.0  # seconds
 
 predictors: dict[str, G2PPredictor] = {}
+speakable: dict[str, str] = {}  # lang code -> espeak voice, probed at startup
 _request_times: dict[str, deque] = defaultdict(deque)
+
+
+def probe_espeak():
+    """Probe espeak-ng at runtime; return {lang: voice} for the languages
+    whose voice is actually installed. Empty dict if espeak-ng is absent."""
+    exe = shutil.which("espeak-ng")
+    if exe is None:
+        logger.info("espeak-ng not found; audio disabled")
+        return {}
+    try:
+        out = subprocess.run([exe, "--voices"], capture_output=True,
+                             text=True, timeout=10, check=True).stdout
+    except (OSError, subprocess.SubprocessError) as e:
+        logger.warning("espeak-ng --voices failed (%s); audio disabled", e)
+        return {}
+    # Column 2 of each voice line is the language code (e.g. "af", "zu").
+    voice_codes = set()
+    for line in out.splitlines()[1:]:
+        parts = line.split()
+        if len(parts) >= 2:
+            voice_codes.add(parts[1])
+    found = {lang: voice for lang, voice in ESPEAK_VOICES.items()
+             if voice in voice_codes}
+    logger.info("espeak-ng voices available for: %s", sorted(found) or "none")
+    return found
 
 
 def load_predictors():
@@ -52,9 +85,12 @@ def load_predictors():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_predictors()
+    speakable.clear()
+    speakable.update(probe_espeak())
     logger.info("serving languages: %s", sorted(predictors))
     yield
     predictors.clear()
+    speakable.clear()
 
 
 app = FastAPI(title="phonemeza G2P API", lifespan=lifespan)
@@ -86,28 +122,69 @@ def languages():
             "name": LANG_NAMES.get(code, code),
             "test_per": metrics["test_per"],
             "test_word_acc": metrics["test_word_acc"],
+            "speakable": code in speakable,
         })
     return out
 
 
-@app.get("/api/phonemize")
-def phonemize(word: str = Query(...), lang: str = Query(...)):
-    predictor = predictors.get(lang)
-    if predictor is None:
+def _check_lang(lang):
+    if lang not in predictors:
         raise HTTPException(status_code=404,
                             detail=f"unknown language {lang!r}; "
                                    f"available: {sorted(predictors)}")
+
+
+def _clean_word(word):
     word = word.strip()
     if any(ch.isspace() for ch in word):
         raise HTTPException(
             status_code=400,
             detail="the model is word-level; send one word at a time "
                    "(no spaces)")
+    return word
+
+
+@app.get("/api/phonemize")
+def phonemize(word: str = Query(...), lang: str = Query(...)):
+    _check_lang(lang)
+    word = _clean_word(word)
     try:
-        result = predictor.predict(word)
+        result = predictors[lang].predict(word)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"lang": lang, **result}
+
+
+@app.get("/api/speak")
+def speak(word: str = Query(...), lang: str = Query(...)):
+    """Reference pronunciation synthesized by espeak-ng from the word's
+    SPELLING using espeak's own rules — independent of the model's predicted
+    phonemes, and only for languages whose espeak voice is installed."""
+    _check_lang(lang)
+    voice = speakable.get(lang)
+    if voice is None:
+        raise HTTPException(
+            status_code=501,
+            detail=f"no espeak-ng voice available for {lang!r}")
+    word = _clean_word(word)
+    if not word or len(word) > 40:
+        raise HTTPException(status_code=400,
+                            detail="word must be 1-40 characters")
+    exe = shutil.which("espeak-ng")
+    if exe is None:  # disappeared since startup
+        raise HTTPException(status_code=501, detail="espeak-ng not available")
+    with tempfile.TemporaryDirectory() as tmp:
+        wav_path = Path(tmp) / "out.wav"
+        try:
+            subprocess.run(
+                [exe, "-v", voice, "-w", str(wav_path), "--", word],
+                capture_output=True, timeout=15, check=True)
+            wav = wav_path.read_bytes()
+        except (OSError, subprocess.SubprocessError) as e:
+            logger.error("espeak-ng failed for %r (%s): %s", word, lang, e)
+            raise HTTPException(status_code=502,
+                                detail="speech synthesis failed")
+    return Response(content=wav, media_type="audio/wav")
 
 
 @app.get("/api/health")
