@@ -40,3 +40,51 @@ Citation (required by the dataset's README):
 > Marelie Davel, Willem Basson, Charl van Heerden and Etienne Barnard,
 > "NCHLT Dictionaries: Project Report", Technical report, North-West
 > University, May 2013.
+
+## Run locally (no container)
+
+```bash
+pip install -r requirements.txt
+python -m uvicorn api.main:app --reload      # http://127.0.0.1:8000
+```
+
+## Deploy
+
+The app is containerized. The image is **CPU-only** (torch installed from the
+PyTorch CPU wheel index — no CUDA), ~1.12 GB, runs as a non-root user, and
+includes `espeak-ng` so the optional "reference pronunciation" audio works for
+Afrikaans (`af` voice). `models/baselines/` is excluded from the image — the
+`afr_none` bottleneck baseline is never served.
+
+### Single container
+
+```bash
+# Build
+docker build -t phonemeza:latest .
+
+# Run (publish the app's port for direct access)
+docker run -d --name phonemeza -p 8000:8000 phonemeza:latest
+
+# Verify
+curl http://127.0.0.1:8000/api/health
+curl "http://127.0.0.1:8000/api/phonemize?word=umuntu&lang=zul"
+```
+
+### Production: Compose + Caddy (automatic HTTPS)
+
+`docker-compose.yml` runs the app (internal only) behind `caddy:2`, which
+publishes 80/443 and obtains/renews a Let's Encrypt certificate automatically
+for the domain in `$DOMAIN`. Point the domain's DNS at the host and make sure
+ports 80 and 443 are open first.
+
+```bash
+echo "DOMAIN=phonemeza.example.com" > .env   # your real domain
+docker compose up -d --build
+
+docker compose logs -f caddy                  # watch certificate provisioning
+docker compose down                           # stop (named volumes persist certs)
+```
+
+The `caddy_data` volume persists issued certificates and the ACME account
+across restarts — keep it to avoid hitting Let's Encrypt rate limits on
+redeploys.

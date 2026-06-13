@@ -1,0 +1,34 @@
+# Keep the build context (and image) small: only g2p/, api/, frontend/,
+# the served model bundles, and requirements.txt are needed.
+
+# VCS / tooling
+.git
+.gitignore
+.claude/
+.pytest_cache/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Training data and notebooks — not needed to serve
+data/
+notebooks/
+scripts/
+
+# Tests and their deps are not part of the serving image
+tests/
+
+# The afr_none bottleneck baseline is NEVER served — keep it out of the image
+models/baselines/
+# Training byproducts that live alongside the .pt bundles
+models/*.log
+models/results.csv
+
+# Docs / container descriptors
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml
+Caddyfile

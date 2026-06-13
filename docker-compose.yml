@@ -1,0 +1,33 @@
+# Two services: the FastAPI app (internal only) and Caddy as the public
+# TLS-terminating reverse proxy. Caddy obtains and renews HTTPS certificates
+# automatically for $DOMAIN (Let's Encrypt). Set DOMAIN in a .env file or the
+# shell environment, e.g.  DOMAIN=phonemeza.example.com docker compose up -d
+services:
+  app:
+    build: .
+    image: phonemeza:latest
+    restart: unless-stopped
+    # No host port published: only Caddy talks to the app, over the compose
+    # network at app:8000.
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Read by the {$DOMAIN} placeholder in the Caddyfile.
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # certificates / ACME account (must persist)
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
