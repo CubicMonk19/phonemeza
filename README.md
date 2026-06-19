@@ -88,3 +88,29 @@ docker compose down                           # stop (named volumes persist cert
 The `caddy_data` volume persists issued certificates and the ACME account
 across restarts — keep it to avoid hitting Let's Encrypt rate limits on
 redeploys.
+
+Both services use `restart: always`, so after a host reboot or crash the
+Docker daemon (enabled on boot) brings the stack back up on its own — this is
+the restart story; no systemd unit is needed.
+
+### One-command deploy to EC2
+
+`deploy/deploy.ps1` (Windows/PowerShell, the primary tool) builds the image,
+ships it to an amd64 Ubuntu EC2 host over SSH, and runs the Compose stack.
+`deploy/deploy.sh` is the equivalent for Linux/macOS operators. Configuration
+lives in `deploy/.env` (gitignored — copy `deploy/.env.example` and fill in
+`DOMAIN`, `EC2_HOST`, `SSH_USER`, `SSH_KEY`).
+
+```powershell
+copy deploy\.env.example deploy\.env   # then edit deploy\.env
+.\deploy\deploy.ps1
+```
+
+What it does: resolves `DOMAIN` and asserts it points at `EC2_HOST` (aborts
+otherwise, so a misconfigured DNS record can't burn Let's Encrypt's
+5-failures/hour/domain budget) → `docker build` → `docker save` + `tar.exe`
+compress → `scp` the image, `docker-compose.yml`, and `Caddyfile` to the host
+→ `docker load` + `docker compose up -d` (passing `DOMAIN` through) → smoke
+test `https://$DOMAIN/api/health` and a phonemize call, failing loudly on any
+non-200. Re-running redeploys idempotently. The SSH user must be able to run
+`docker` without sudo (member of the `docker` group).

@@ -3,3 +3,9 @@ models/
 __pycache__/
 .venv/
 *.egg-info/
+
+# Deploy secrets and build artifacts (never commit credentials/IPs/keys)
+deploy/.env
+deploy/build/
+*.tar
+*.tar.gz

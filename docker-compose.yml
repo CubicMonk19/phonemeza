@@ -6,7 +6,10 @@ services:
   app:
     build: .
     image: phonemeza:latest
-    restart: unless-stopped
+    # restart: always -> the Docker daemon brings these back after a host
+    # reboot or crash (Docker Desktop / dockerd is enabled on boot), which is
+    # our restart story instead of a systemd unit.
+    restart: always
     # No host port published: only Caddy talks to the app, over the compose
     # network at app:8000.
     expose:
@@ -14,7 +17,7 @@ services:
 
   caddy:
     image: caddy:2
-    restart: unless-stopped
+    restart: always
     depends_on:
       - app
     ports:
